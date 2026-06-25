@@ -152,9 +152,8 @@ module.exports = class NoteAnswersPlugin extends Plugin {
       if (!msg) { new Notice('Note Answers: empty response.'); return; }
 
       // The plugin owns formatting + the append. The CLI only produced <msg>.
-      // Blank line after each --- so they render as horizontal rules, not setext headings.
       const label = (this.settings.responseLabel || 'Claude').trim();
-      const block = '\n\n---\n\n' + label + ': ' + msg + '\n\n---\n';
+      const block = '\n' + label + ': ' + msg + '\n';
       await this.app.vault.append(file, block);
       new Notice('Note answered.');
     });

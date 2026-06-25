@@ -1,7 +1,7 @@
 {
   "id": "note-answers",
   "name": "Note Answers",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minAppVersion": "1.4.0",
   "description": "Append a brief answer to the end of the current note using your local Claude Code CLI. Reads the note and its links, answers the request in its final part, and appends the reply. The note content is sent to the CLI (Anthropic).",
   "author": "rihards",
