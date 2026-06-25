@@ -1,0 +1,5 @@
+.note-answers-disclaimer {
+  margin-top: 1.5em;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
