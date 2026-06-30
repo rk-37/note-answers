@@ -19,12 +19,18 @@ const DEFAULT_SETTINGS = {
 
 const RULES_BASE = [
   'You are invoked headlessly to APPEND a brief answer to the end of an Obsidian note.',
+  'What you CAN do: read this note and use your available read-only and web tools to gather context.',
+  'What you CANNOT do: you have no write/edit tools, so you cannot change the note. The plugin appends',
+  '  your answer for you and renders the whole thing in italics — existing note content is never touched.',
   'Strict rules:',
-  '- Do NOT edit, rewrite, or reformat any existing note content. You have no write tools; do not try.',
   '- The user called you to answer the request written in the FINAL part of the note.',
   '- Be VERY brief and to the point — a few sentences at most, ideally fewer. Dense, no filler.',
-  '- Output ONLY the message body text. No label prefix, no surrounding ---, no headings,',
-  '  no preamble, no restating the question, no markdown code fences unless truly essential.',
+  '- Your answer is displayed in italics as plain prose. Write ONLY flowing sentences in short paragraphs.',
+  '  Do NOT use any markdown formatting — no headings, no **bold**, no bullet or numbered lists, no block',
+  '  quotes, tables, code fences, or your own *emphasis*. Such markup is stripped before display, so it',
+  '  only hurts readability. Just words and paragraphs.',
+  '- Output ONLY the message body text. No label prefix, no surrounding ---, no preamble,',
+  '  no restating the question.',
 ];
 
 const RULES_LINKS = [
@@ -50,6 +56,34 @@ function detectClaudePath() {
     try { if (fs.existsSync(c)) return c; } catch (e) { /* ignore */ }
   }
   return null;
+}
+
+// Render a (possibly multi-paragraph) message as clean italics. The answer is
+// meant to be plain prose, but markdown sometimes slips through; any heading,
+// bold, list marker or stray emphasis would collide with the italic wrapping,
+// so strip each paragraph down to plain text first, escape any leftover *, then
+// wrap in *...* — native italic, which renders reliably in every Obsidian mode.
+function toPlainProse(p) {
+  return p
+    .replace(/^[ \t]*#{1,6}[ \t]+/gm, '')             // headings -> plain
+    .replace(/^[ \t]*>[ \t]?/gm, '')                  // blockquote markers
+    .replace(/^[ \t]*(?:[-*+]|\d+[.)])[ \t]+/gm, '')  // bullet/numbered markers
+    .replace(/\*\*([^*]+)\*\*/g, '$1')                // **bold** -> plain
+    .replace(/__([^_]+)__/g, '$1')                    // __bold__ -> plain
+    .replace(/(?<!\*)\*(?!\s)([^*\n]+?)(?<!\s)\*(?!\*)/g, '$1') // *emphasis* -> plain
+    .replace(/`+([^`]+)`+/g, '$1')                    // `code` -> plain
+    .replace(/\*/g, '\\*')                            // escape any leftover *
+    .replace(/[ \t]+\n/g, '\n')                       // tidy line ends
+    .trim();
+}
+
+function italicizeMessage(text) {
+  return String(text)
+    .split(/\n[ \t]*\n+/)             // paragraphs are separated by blank lines
+    .map(toPlainProse)
+    .filter((p) => p.length)
+    .map((p) => '*' + p + '*')
+    .join('\n\n');
 }
 
 function buildEnv() {
@@ -153,7 +187,7 @@ module.exports = class NoteAnswersPlugin extends Plugin {
 
       // The plugin owns formatting + the append. The CLI only produced <msg>.
       const label = (this.settings.responseLabel || 'Claude').trim();
-      const block = '\n' + label + ': ' + msg + '\n';
+      const block = '\n' + label + ': ' + italicizeMessage(msg) + '\n';
       await this.app.vault.append(file, block);
       new Notice('Note answered.');
     });
